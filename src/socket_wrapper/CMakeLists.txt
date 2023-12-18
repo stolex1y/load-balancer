@@ -1,7 +1,10 @@
 set(STATIC_LIB "socket-wrapper-static")
 
 add_library(${STATIC_LIB} STATIC
+        include/udp_socket.h
+        include/socket.h
         include/end_point.h
+        include/udp.h
         include/protocol.h
 )
 set_target_properties(${STATIC_LIB} PROPERTIES LINKER_LANGUAGE CXX)
