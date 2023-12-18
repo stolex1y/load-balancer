@@ -1,6 +1,7 @@
 set(OBJ_LIB ${CMAKE_PROJECT_NAME})
 set(RUNNABLE "${CMAKE_PROJECT_NAME}-runnable")
 set(STATIC_LIB "${CMAKE_PROJECT_NAME}-static")
+set(SOCKET_WRAPPER_LIB "socket-wrapper-static")
 
 add_library(${OBJ_LIB} OBJECT
         load_balancer.h
@@ -11,6 +12,7 @@ target_include_directories(${OBJ_LIB} PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
+target_link_libraries(${OBJ_LIB} PUBLIC ${SOCKET_WRAPPER_LIB})
 
 #warnings
 target_compile_options(${OBJ_LIB} PRIVATE "-Werror" "-Wall" "-Wextra" "-Wpedantic")
