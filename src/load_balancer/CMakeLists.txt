@@ -6,6 +6,9 @@ set(SOCKET_WRAPPER_LIB "socket-wrapper-static")
 add_library(${OBJ_LIB} OBJECT
         load_balancer.h
         load_balancer.cc
+        configuration/configuration.cc
+        configuration/configuration.h
+        configuration/converters.h
 )
 set_target_properties(${OBJ_LIB} PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(${OBJ_LIB} PUBLIC
