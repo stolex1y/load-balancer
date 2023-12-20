@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "end_point.h"
+#include "invalid_socket_exception.h"
 
 namespace socket_wrapper {
 
@@ -47,7 +48,7 @@ class Socket {
   /**
    * \brief Закрыть сокет.
    */
-  void Close() const;
+  void Close();
   /**
    * \brief Получить адрес сокета.
    */
@@ -56,6 +57,17 @@ class Socket {
  protected:
   EndPointType end_point_;
   int socket_;
+
+  /**
+   * \brief Преобразовать ошибку, сохраненную в errno в исключение и выбросить его.
+   * \param msg сообщение о выполняемой операции, в которой произошла ошибка.
+   */
+  static void ParseErrnoAndThrow(const std::string &msg);
+
+  /**
+   * \brief Проверка валидности дескриптора сокета.
+   */
+  [[nodiscard]] bool IsValid() const;
 
   friend void Swap(Socket &first, Socket &second) {
     using std::swap;
@@ -92,7 +104,7 @@ Socket<Proto>::Socket(EndPointType end_point) : end_point_(std::move(end_point))
       static_cast<int>(protocol.name)
   );
   if (socket_ < 0) {
-    throw std::runtime_error(strerror(errno));
+    ParseErrnoAndThrow("Can't create socket.");
   }
   Bind();
 }
@@ -117,11 +129,8 @@ Socket<Proto>::~Socket() {
 template <typename Proto>
 void Socket<Proto>::Connect(const EndPointType &end_point) const {
   if (connect(socket_, end_point.GetAddressImpl().lock().get(), end_point.GetAddressLen())) {
-    throw std::runtime_error(std::format(
-        "Can't connect to end point ({}:{}): {}",
-        end_point.GetAddress(),
-        end_point.GetPort(),
-        strerror(errno)
+    ParseErrnoAndThrow(std::format(
+        "Can't connect to end point ({}:{}).", end_point.GetAddress(), end_point.GetPort()
     ));
   }
 }
@@ -134,7 +143,7 @@ std::string Socket<Proto>::Receive(const size_t max_size) const {
   while (const ssize_t recv_count =
              recv(socket_, buffer.data(), std::min(left, buffer.size()), 0)) {
     if (recv_count < 0) {
-      throw std::runtime_error(std::format("Can't recv: {}", strerror(errno)));
+      ParseErrnoAndThrow("Can't recv.");
     }
     msg.append(buffer.data(), recv_count);
     left -= recv_count;
@@ -148,16 +157,17 @@ void Socket<Proto>::Send(const std::string &message) const {
   while (const ssize_t cur_send_cont =
              send(socket_, message.data() + send_count, message.size() - send_count, 0)) {
     if (cur_send_cont < 0) {
-      throw std::runtime_error(std::format("Can't send: {}", strerror(errno)));
+      ParseErrnoAndThrow("Can't send.");
     }
     send_count += cur_send_cont;
   }
 }
 
 template <typename Proto>
-void Socket<Proto>::Close() const {
+void Socket<Proto>::Close() {
   shutdown(socket_, SHUT_RDWR);
   close(socket_);
+  socket_ = -1;
 }
 
 template <typename Proto>
@@ -166,13 +176,27 @@ const EndPoint<Proto> &Socket<Proto>::GetEndPoint() const {
 }
 
 template <typename Proto>
+void Socket<Proto>::ParseErrnoAndThrow(const std::string &msg) {
+  switch (errno) {
+    case 0:
+      return;
+    case EBADF:
+      throw InvalidSocketException(msg);
+    default:
+      throw std::runtime_error(std::format("{} {}", msg, strerror(errno)));
+  }
+}
+
+template <typename Proto>
+bool Socket<Proto>::IsValid() const {
+  return socket_ >= 0;
+}
+
+template <typename Proto>
 void Socket<Proto>::Bind() {
   if (bind(socket_, end_point_.GetAddressImpl().lock().get(), end_point_.GetAddressLen())) {
-    throw std::runtime_error(std::format(
-        "Can't bind to end point ({}:{}): {}",
-        end_point_.GetAddress(),
-        end_point_.GetPort(),
-        strerror(errno)
+    ParseErrnoAndThrow(std::format(
+        "Can't bind to end point ({}:{}).", end_point_.GetAddress(), end_point_.GetPort()
     ));
   }
   sockaddr binded_addr = {};

@@ -23,7 +23,9 @@ class UdpSocket : public Socket<UdpProtocol<ProtoFamily>> {
   explicit UdpSocket(EndPointType end_point);
 
   UdpSocket(const UdpSocket &other) = delete;
+  UdpSocket(UdpSocket &&other) = default;
   UdpSocket &operator=(const UdpSocket &other) = delete;
+  UdpSocket &operator=(UdpSocket &&other) = default;
 
   /**
    * \brief Отправить сообщения указанному получателю.
@@ -67,7 +69,7 @@ void UdpSocket<ProtoFamily>::SendTo(
              receiver.GetAddressLen()
          )) {
     if (cur_send_cont < 0) {
-      throw std::runtime_error(std::format("Can't send: {}", strerror(errno)));
+      SocketType::ParseErrnoAndThrow("Can't send.");
     }
     send_count += cur_send_cont;
   }
@@ -83,8 +85,11 @@ std::pair<std::string, UdpEndPoint<ProtoFamily>> UdpSocket<ProtoFamily>::Receive
   const int recv_count = recvfrom(
       SocketType::socket_, buffer.data(), buffer.size(), 0, &sender_addr, &sender_addr_len
   );
+  if (sender_addr_len == 0) {
+    throw InvalidSocketException("Can't recv. Socket is shut down.");
+  }
   if (recv_count < 0) {
-    throw std::runtime_error(std::format("Can't recv: {}", strerror(errno)));
+    SocketType::ParseErrnoAndThrow("Can't recv.");
   }
   buffer.resize(recv_count);
   auto sender_end_point = EndPointType::ParseEndPoint(sender_addr, sender_addr_len);
