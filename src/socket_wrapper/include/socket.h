@@ -23,7 +23,9 @@ class Socket {
   explicit Socket(EndPointType end_point);
 
   Socket(const Socket &other) = delete;
+  Socket(Socket &&other) noexcept;
   Socket &operator=(const Socket &other) = delete;
+  Socket &operator=(Socket &&other) noexcept;
 
   virtual ~Socket();
 
@@ -54,6 +56,12 @@ class Socket {
  protected:
   EndPointType end_point_;
   int socket_;
+
+  friend void Swap(Socket &first, Socket &second) {
+    using std::swap;
+    swap(first.end_point_, second.end_point_);
+    swap(first.socket_, second.socket_);
+  }
 
  private:
   /**
@@ -87,6 +95,18 @@ Socket<Proto>::Socket(EndPointType end_point) : end_point_(std::move(end_point))
     throw std::runtime_error(strerror(errno));
   }
   Bind();
+}
+
+template <typename Proto>
+Socket<Proto>::Socket(Socket &&other) noexcept
+    : end_point_(std::move(other.end_point_)), socket_(other.socket_) {
+  other.socket_ = -1;
+}
+
+template <typename Proto>
+Socket<Proto> &Socket<Proto>::operator=(Socket &&other) noexcept {
+  Swap(*this, other);
+  return *this;
 }
 
 template <typename Proto>
@@ -136,6 +156,7 @@ void Socket<Proto>::Send(const std::string &message) const {
 
 template <typename Proto>
 void Socket<Proto>::Close() const {
+  shutdown(socket_, SHUT_RDWR);
   close(socket_);
 }
 
