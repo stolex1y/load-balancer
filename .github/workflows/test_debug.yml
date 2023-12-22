@@ -78,9 +78,9 @@ jobs:
         run: |
           cd $BUILD_DIR
           ABS_BUILD_DIR=`pwd`
-          cd test/unit/sorting_on_tape
+          cd test/unit/load_balancer
           $ABS_BUILD_DIR/_deps/memcheck-cover-src/bin/memcheck_runner.sh \
-            -o $ABS_BUILD_DIR/$VALGRIND_OUT/report -- $ABS_BUILD_DIR/test/unit/sorting_on_tape/$TEST_TARGET \
+            -o $ABS_BUILD_DIR/$VALGRIND_OUT/report -- $ABS_BUILD_DIR/test/unit/load_balancer/$TEST_TARGET \
             && $ABS_BUILD_DIR/_deps/memcheck-cover-src/bin/generate_html_report.sh -i $ABS_BUILD_DIR/$VALGRIND_OUT \
             -o $ABS_BUILD_DIR/$VALGRIND_OUT
 
