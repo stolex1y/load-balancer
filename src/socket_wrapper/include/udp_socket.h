@@ -59,15 +59,16 @@ template <ProtocolFamily ProtoFamily>
 void UdpSocket<ProtoFamily>::SendTo(
     const std::string &message, const UdpEndPoint<ProtoFamily> &receiver
 ) const {
-  ssize_t send_count = 0;
-  while (const ssize_t cur_send_cont = sendto(
-             SocketType::socket_,
-             message.data() + send_count,
-             message.size() - send_count,
-             0,
-             receiver.GetAddressImpl().lock().get(),
-             receiver.GetAddressLen()
-         )) {
+  size_t send_count = 0;
+  while (send_count < message.size()) {
+    const ssize_t cur_send_cont = sendto(
+        SocketType::socket_,
+        message.data() + send_count,
+        message.size() - send_count,
+        0,
+        receiver.GetAddressImpl().lock().get(),
+        receiver.GetAddressLen()
+    );
     if (cur_send_cont < 0) {
       SocketType::ParseErrnoAndThrow("Can't send.");
     }

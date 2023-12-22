@@ -153,9 +153,10 @@ std::string Socket<Proto>::Receive(const size_t max_size) const {
 
 template <typename Proto>
 void Socket<Proto>::Send(const std::string &message) const {
-  ssize_t send_count = 0;
-  while (const ssize_t cur_send_cont =
-             send(socket_, message.data() + send_count, message.size() - send_count, 0)) {
+  size_t send_count = 0;
+  while (send_count < message.size()) {
+    const ssize_t cur_send_cont =
+        send(socket_, message.data() + send_count, message.size() - send_count, 0);
     if (cur_send_cont < 0) {
       ParseErrnoAndThrow("Can't send.");
     }
