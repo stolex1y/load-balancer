@@ -13,6 +13,10 @@ LoadBalancer::LoadBalancer(std::shared_ptr<config::Configuration> configuration)
     : configuration_(std::move(configuration)) {
   UpdateConfigParameters();
 
+  if (server_end_points_.empty()) {
+    throw std::runtime_error("You must specify the address of at least one server!");
+  }
+
   receiver_ = SocketType(receiver_port_);
   sender_ = SocketType(sender_port_);
 }
