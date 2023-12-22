@@ -40,11 +40,12 @@ class LoadBalancer {
   static constexpr auto kSenderPortKey = "sender_port";
   /// Значение порта балансировщика, с которого перенаправляются принятые запросы.
   static constexpr std::uint16_t kDefaultSenderPort = 10001;
-  static constexpr std::size_t kDefaultThreadCount = 1;
+  static constexpr std::size_t kDefaultThreadCount = 2;
 
   explicit LoadBalancer(std::shared_ptr<config::Configuration> configuration);
   LoadBalancer(const LoadBalancer &other) = delete;
   LoadBalancer &operator=(const LoadBalancer &other) = delete;
+  ~LoadBalancer();
 
   /**
    * \brief Запустить балансировку нагрузки.
@@ -58,6 +59,14 @@ class LoadBalancer {
    * \brief Ожидание остановки балансировки.
    */
   void Join() const;
+  /**
+   * \brief Конечная точка, с которой балансировщик принимает запросы.
+   */
+  EndPointType ReceiverEndPoint() const;
+  /**
+   * \brief Конечная точка, с которой балансировщик отправляет
+   */
+  EndPointType SenderEndPoint() const;
 
  private:
   using ServerEndPoints = std::vector<EndPointType>;
@@ -67,16 +76,23 @@ class LoadBalancer {
   const std::shared_ptr<config::Configuration> configuration_;
   ServerEndPoints server_end_points_;
   std::size_t max_rps_ = kDefaultMaxRps;
+
   std::size_t next_server_ = 0;
   mutable std::mutex next_server_mutex_;
+
   std::uint16_t receiver_port_ = kDefaultReceiverPort;
-  std::uint16_t sender_port_ = kDefaultSenderPort;
   SocketType receiver_;
+
+  std::uint16_t sender_port_ = kDefaultSenderPort;
   SocketType sender_;
+  mutable std::mutex send_msg_mutex_;
+
   std::queue<TimePoint> request_times_;
   mutable std::mutex requests_mutex_;
+
   size_t thread_count_ = kDefaultThreadCount;
   std::vector<std::jthread> threads_;
+
   std::atomic_bool stopped_ = true;
 
   /**

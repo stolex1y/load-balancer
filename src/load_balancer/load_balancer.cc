@@ -17,6 +17,10 @@ LoadBalancer::LoadBalancer(std::shared_ptr<config::Configuration> configuration)
   sender_ = SocketType(sender_port_);
 }
 
+LoadBalancer::~LoadBalancer() {
+  Stop();
+}
+
 void LoadBalancer::Start() {
   bool was_stopped = true;
   if (!stopped_.compare_exchange_strong(was_stopped, false)) {
@@ -25,7 +29,6 @@ void LoadBalancer::Start() {
   for (std::size_t i = 0; i < thread_count_; ++i) {
     threads_.emplace_back([this] {
       Worker();
-      std::cout << "End receiving in thread\n";
     });
   }
 }
@@ -35,6 +38,7 @@ void LoadBalancer::Stop() {
   if (!stopped_.compare_exchange_strong(was_stopped, true)) {
     return;
   }
+  std::cout << "Stop requests receiving.\n";
   stopped_.notify_all();
   receiver_.Close();
   threads_.clear();
@@ -45,6 +49,14 @@ void LoadBalancer::Join() const {
   stopped_.wait(false);
 }
 
+LoadBalancer::EndPointType LoadBalancer::ReceiverEndPoint() const {
+  return receiver_.GetEndPoint();
+}
+
+LoadBalancer::EndPointType LoadBalancer::SenderEndPoint() const {
+  return sender_.GetEndPoint();
+}
+
 void LoadBalancer::Worker() {
   while (true) {
     try {
@@ -53,9 +65,9 @@ void LoadBalancer::Worker() {
         continue;
       }
       const auto server_idx = GetNextServerIndex();
+      std::lock_guard lock(send_msg_mutex_);
       sender_.SendTo(datagram, server_end_points_[server_idx]);
     } catch ([[maybe_unused]] const InvalidSocketException &ex) {
-      std::cout << "Stop requests receiving.\n";
       return;
     } catch (const std::exception &ex) {
       std::cerr << "Error in load balancer: " << ex.what() << ".\n";
