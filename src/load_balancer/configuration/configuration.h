@@ -27,7 +27,7 @@ class Configuration {
    * \brief Получить значение свойства по ключу.
    */
   template <typename T>
-  const T &GetParam(const std::string &key, const T &default_value);
+  T GetParam(const std::string &key, const T &default_value);
   /**
    * \brief Повторно прочитать значения свойств из файла.
    */
@@ -61,7 +61,7 @@ struct StringConverter {
 };
 
 template <typename T>
-const T &Configuration::GetParam(const std::string &key, const T &default_value) {
+T Configuration::GetParam(const std::string &key, const T &default_value) {
   auto value = FindParam(key);
   if (!value) {
     return default_value;
@@ -70,7 +70,7 @@ const T &Configuration::GetParam(const std::string &key, const T &default_value)
     return default_value;
   }
   if (value->type() == typeid(T)) {
-    return any_cast<T &>(*value);
+    return any_cast<T>(*value);
   }
   const auto str_value = any_cast<std::string &>(*value);
   const auto parsed_value = StringConverter<T>()(str_value);
